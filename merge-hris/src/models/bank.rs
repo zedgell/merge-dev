@@ -1,5 +1,7 @@
-use serde::{Serialize, Deserialize};
 use crate::configuration::HRISConfig;
+use serde::{Deserialize, Serialize};
+
+use merge_proc_macros::{generate_url_params, send_request};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 #[builder(setter(into))]
@@ -35,8 +37,17 @@ pub struct RemoteDaum {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Builder)]
 #[builder(setter(into))]
+#[send_request(service="hris", model="bank-info", return_type=GetRequestResponse)]
 pub struct GetRequest {
     pub config: HRISConfig,
+    #[builder(setter(into, strip_option), default)]
+    pub params: Option<GetRequestParams>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Builder)]
+#[builder(setter(into))]
+#[generate_url_params]
+pub struct GetRequestParams {
     #[builder(setter(into, strip_option), default)]
     pub account_type: Option<String>,
     #[builder(setter(into, strip_option), default)]
@@ -69,11 +80,31 @@ pub struct GetRequest {
     pub remote_id: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetRequestResponse {
+    pub next: Option<String>,
+    pub previous: Option<String>,
+    pub results: Vec<BankModel>,
+}
+
+impl GetRequest {
+    pub fn send(&self) {}
+}
+
 #[derive(Default, Debug, Clone, PartialEq, Eq, Builder)]
 #[builder(setter(into))]
+#[send_request(service="hris", model="bank-info", return_type=BankModel)]
 pub struct GetRequestById {
     pub config: HRISConfig,
     pub id: String,
+    #[builder(setter(into, strip_option), default)]
+    pub params: Option<GetRequestByIdParams>,
+}
+
+#[derive(Default, Debug, Clone, PartialEq, Eq, Builder)]
+#[builder(setter(into))]
+#[generate_url_params]
+pub struct GetRequestByIdParams {
     #[builder(setter(into, strip_option), default)]
     pub expand: Option<String>,
     #[builder(setter(into, strip_option), default)]
@@ -85,7 +116,6 @@ pub struct GetRequestById {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn it_builds_the_model() {
         let remote_data = RemoteDaumBuilder::default()
@@ -110,33 +140,43 @@ mod tests {
         assert_eq!(model.remote_was_deleted, false);
     }
 
-    #[test]
-    fn it_build_the_request() {
+    #[tokio::test]
+    async fn it_build_the_request() {
         let config = HRISConfig::new("1234", "4321");
 
-        let request: GetRequest = GetRequestBuilder::default()
-            .config(config.clone())
+        let request_params: GetRequestParams = GetRequestParamsBuilder::default()
+            .account_type("checking")
             .bank_name("test")
+            .include_remote_data(true)
             .build()
             .unwrap();
 
-        assert_eq!(request.config, config);
-        assert_eq!(request.bank_name, Some("test".to_string()));
+        let request: GetRequest = GetRequestBuilder::default()
+            .params(request_params)
+            .config(config)
+            .build()
+            .unwrap();
+
+        println!("{:#?}", request.send_request().await)
     }
 
-    #[test]
-    fn it_build_the_request_by_id() {
+    #[tokio::test]
+    async fn it_build_the_request_by_id() {
         let config = HRISConfig::new("1234", "4321");
+
+        let request_params = GetRequestByIdParamsBuilder::default()
+            .include_remote_data(true)
+            .build()
+            .unwrap();
 
         let request: GetRequestById = GetRequestByIdBuilder::default()
             .config(config.clone())
             .id("test")
-            .include_remote_data(true)
             .build()
             .unwrap();
 
         assert_eq!(request.config, config);
         assert_eq!(request.id, "test".to_string());
-        assert_eq!(request.include_remote_data, Some(true));
+        println!("{:#?}", request.send_request().await)
     }
 }
