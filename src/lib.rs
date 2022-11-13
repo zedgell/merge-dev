@@ -1,1 +1,1 @@
-pub mod macros;
+pub mod hris;

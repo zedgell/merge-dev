@@ -5,7 +5,7 @@ use merge_proc_macros::{generate_url_params, send_request};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 #[builder(setter(into))]
-pub struct BankModel {
+pub struct BankInfoModel {
     id: String,
     #[builder(setter(into, strip_option), default)]
     remote_id: Option<String>,
@@ -84,16 +84,12 @@ pub struct GetRequestParams {
 pub struct GetRequestResponse {
     pub next: Option<String>,
     pub previous: Option<String>,
-    pub results: Vec<BankModel>,
-}
-
-impl GetRequest {
-    pub fn send(&self) {}
+    pub results: Vec<BankInfoModel>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Builder)]
 #[builder(setter(into))]
-#[send_request(service="hris", model="bank-info", return_type=BankModel)]
+#[send_request(service="hris", model="bank-info", return_type=BankInfoModel)]
 pub struct GetRequestById {
     pub config: HRISConfig,
     pub id: String,
@@ -124,7 +120,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let model: BankModel = BankModelBuilder::default()
+        let model: BankInfoModel = BankModelBuilder::default()
             .id("1234")
             .remote_id("4321")
             .account_number("7890")
