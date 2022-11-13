@@ -3,10 +3,6 @@ name: HRIS Unit Test
 on:
   push
 
-env:
-  HRIS_ACCESS_TOKEN: ${{ secrets.HRIS_ACCESS_TOKEN }}
-  API_KEY: ${{ secrets.API_KEY }}
-
 jobs:
   run-unit-test:
     runs-on: ubuntu-latest
