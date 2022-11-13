@@ -22,13 +22,13 @@ pub struct BankInfoModel {
     #[builder(setter(into, strip_option), default)]
     remote_created_at: Option<String>,
     #[builder(setter(into, strip_option), default)]
-    remote_data: Option<Vec<RemoteDaum>>,
+    remote_data: Option<Vec<RemoteData>>,
     remote_was_deleted: bool,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 #[builder(setter(into))]
-pub struct RemoteDaum {
+pub struct RemoteData {
     #[builder(setter(into, strip_option), default)]
     pub path: Option<String>,
     #[builder(setter(into, strip_option), default)]
@@ -112,9 +112,11 @@ pub struct GetRequestByIdParams {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mockito::mock;
+
     #[test]
     fn it_builds_the_model() {
-        let remote_data = RemoteDaumBuilder::default()
+        let remote_data = RemoteDataBuilder::default()
             .path("/bank/1234")
             .data(vec!["1".to_string(), "2".to_string()])
             .build()
@@ -138,10 +140,59 @@ mod tests {
 
     #[tokio::test]
     async fn it_successfully_sends_request() {
-        let config = HRISConfig::new(
-            std::env::var("API_KEY").unwrap(),
-            std::env::var("HRIS_ACCESS_TOKEN").unwrap(),
-        );
+        let m = mock("GET", "/api/hris/v1/bank-info?include_remote_data=true")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                "{
+                  \"next\": \"cD0yMDIxLTAxLTA2KzAzJTNBMjQlM0E1My40MzQzMjYlMkIwMCUzQTAw\",
+                  \"previous\": \"cj1sZXdwd2VycWVtY29zZnNkc2NzUWxNMEUxTXk0ME16UXpNallsTWtJ\",
+                  \"results\": [
+                    {
+                      \"id\": \"fd1e0fb5-8f92-4ec9-9f32-179cf732867d\",
+                      \"remote_id\": \"123234\",
+                      \"employee\": \"a3617eb4-dfe3-426f-921e-a65fc1661e10\",
+                      \"account_number\": \"439291590\",
+                      \"routing_number\": \"089690059\",
+                      \"bank_name\": \"Chase\",
+                      \"account_type\": \"CHECKING\",
+                      \"remote_created_at\": \"2021-12-06T10:11:26Z\",
+                      \"remote_data\": [
+                        {
+                          \"path\": \"/bank-info\",
+                          \"data\": [
+                            \"Varies by platform\"
+                          ]
+                        }
+                      ],
+                      \"remote_was_deleted\": true
+                    }
+                  ]
+                }",
+            )
+            .expect(1)
+            .create();
+        let config = HRISConfig::new("test", "test");
+
+        let expected_remote_data: RemoteData = RemoteDataBuilder::default()
+            .path("/bank-info")
+            .data(vec!["Varies by platform".to_string()])
+            .build()
+            .unwrap();
+
+        let expected_model: BankInfoModel = BankInfoModelBuilder::default()
+            .id("fd1e0fb5-8f92-4ec9-9f32-179cf732867d")
+            .remote_id("123234")
+            .employee("a3617eb4-dfe3-426f-921e-a65fc1661e10")
+            .account_number("439291590")
+            .routing_number("089690059")
+            .bank_name("Chase")
+            .account_type("CHECKING")
+            .remote_created_at("2021-12-06T10:11:26Z")
+            .remote_was_deleted(true)
+            .remote_data(vec![expected_remote_data])
+            .build()
+            .unwrap();
 
         let request_params: GetRequestParams = GetRequestParamsBuilder::default()
             .include_remote_data(true)
@@ -154,18 +205,55 @@ mod tests {
             .build()
             .unwrap();
 
-        let result = request.send_request().await.unwrap();
-        assert_eq!(result.next, None);
-        assert_eq!(result.previous, None);
-        assert_eq!(result.results.is_empty(), true)
+        let result: GetRequestResponse = request.send_request().await.unwrap();
+        assert_eq!(
+            result.next,
+            Some("cD0yMDIxLTAxLTA2KzAzJTNBMjQlM0E1My40MzQzMjYlMkIwMCUzQTAw".to_string())
+        );
+        assert_eq!(
+            result.previous,
+            Some("cj1sZXdwd2VycWVtY29zZnNkc2NzUWxNMEUxTXk0ME16UXpNallsTWtJ".to_string())
+        );
+        assert_eq!(result.results.is_empty(), false);
+        assert_eq!(result.results.len(), 1);
+        assert_eq!(result.results.get(0).unwrap().clone(), expected_model);
+        m.assert()
     }
 
     #[tokio::test]
-    async fn it_sends_request_and_gets_404() {
-        let config = HRISConfig::new(
-            std::env::var("API_KEY").unwrap(),
-            std::env::var("HRIS_ACCESS_TOKEN").unwrap(),
-        );
+    async fn it_sends_request_and_get_by_id() {
+        let m = mock(
+            "GET",
+            "/api/hris/v1/bank-info/fd1e0fb5-8f92-4ec9-9f32-179cf732867d?include_remote_data=true",
+        )
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            "
+                {
+                  \"id\": \"fd1e0fb5-8f92-4ec9-9f32-179cf732867d\",
+                  \"remote_id\": \"123234\",
+                  \"employee\": \"a3617eb4-dfe3-426f-921e-a65fc1661e10\",
+                  \"account_number\": \"439291590\",
+                  \"routing_number\": \"089690059\",
+                  \"bank_name\": \"Chase\",
+                  \"account_type\": \"CHECKING\",
+                  \"remote_created_at\": \"2021-12-06T10:11:26Z\",
+                  \"remote_data\": [
+                    {
+                      \"path\": \"/bank-info\",
+                      \"data\": [
+                        \"Varies by platform\"
+                      ]
+                    }
+                  ],
+                  \"remote_was_deleted\": true
+                }",
+        )
+        .expect(1)
+        .create();
+
+        let config = HRISConfig::new("test", "test");
 
         let request_params = GetRequestByIdParamsBuilder::default()
             .include_remote_data(true)
@@ -175,19 +263,61 @@ mod tests {
         let request: GetRequestById = GetRequestByIdBuilder::default()
             .config(config.clone())
             .params(request_params.clone())
-            .id("test")
+            .id("fd1e0fb5-8f92-4ec9-9f32-179cf732867d")
             .build()
             .unwrap();
 
-        assert_eq!(request.config, config);
-        assert_eq!(request.params, Some(request_params));
-        assert_eq!(request.id, "test".to_string());
-        let result = request.send_request().await;
-        if let Err(err) = result {
-            assert_eq!(
-                err.to_string(),
-                "Request was not successfully status: 404 body: ".to_string()
-            )
-        }
+        let result: BankInfoModel = request.send_request().await.unwrap();
+
+        let expected_remote_data: RemoteData = RemoteDataBuilder::default()
+            .path("/bank-info")
+            .data(vec!["Varies by platform".to_string()])
+            .build()
+            .unwrap();
+
+        let expected_model: BankInfoModel = BankInfoModelBuilder::default()
+            .id("fd1e0fb5-8f92-4ec9-9f32-179cf732867d")
+            .remote_id("123234")
+            .employee("a3617eb4-dfe3-426f-921e-a65fc1661e10")
+            .account_number("439291590")
+            .routing_number("089690059")
+            .bank_name("Chase")
+            .account_type("CHECKING")
+            .remote_created_at("2021-12-06T10:11:26Z")
+            .remote_was_deleted(true)
+            .remote_data(vec![expected_remote_data])
+            .build()
+            .unwrap();
+
+        assert_eq!(result, expected_model);
+        m.assert()
+    }
+
+    #[tokio::test]
+    async fn test_it_return_error_on_failed_status() {
+        let config = HRISConfig::new("test", "test");
+
+        let m = mock("GET", "/api/hris/v1/bank-info/not-found")
+            .with_status(404)
+            .with_header("content-type", "application/json")
+            .with_body("Some Body")
+            .expect(1)
+            .create();
+
+        let request: GetRequestById = GetRequestByIdBuilder::default()
+            .config(config.clone())
+            .id("not-found")
+            .build()
+            .unwrap();
+
+        let result: Result<BankInfoModel, String> = request.send_request().await;
+
+        assert_eq!(result.is_err(), true);
+        assert_eq!(
+            result.unwrap_err(),
+            "Request was not successfully status: 404 body: Some Body"
+        );
+
+        m.assert()
     }
 }

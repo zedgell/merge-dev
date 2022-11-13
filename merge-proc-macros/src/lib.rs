@@ -163,11 +163,11 @@ pub fn send_request(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let url_token = if has_id {
         quote! {
-            let url = format!("https://api.merge.dev/api/{}/v1/{}/{}{}", #service, #model, &self.clone().id, url_params);
+            let url = format!("{}/api/{}/v1/{}/{}{}", url_base, #service, #model, &self.clone().id, url_params);
         }
     } else {
         quote! {
-            let url = format!("https://api.merge.dev/api/{}/v1/{}{}", #service, #model, url_params);
+            let url = format!("{}/api/{}/v1/{}{}", url_base, #service, #model, url_params);
         }
     };
 
@@ -176,6 +176,14 @@ pub fn send_request(args: TokenStream, input: TokenStream) -> TokenStream {
 
         impl #struct_name {
             async fn send_request(&self) -> Result<#return_type, String> {
+                #[cfg(test)]
+                use mockito;
+
+                #[cfg(not(test))]
+                let url_base = "https://api.merge.dev";
+
+                #[cfg(test)]
+                let url_base = &mockito::server_url();
 
                 let mut url_params = "".to_string();
 
