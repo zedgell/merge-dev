@@ -1,0 +1,17 @@
+name: Clippy
+
+on:
+  push
+
+jobs:
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          override: true
+      - name: run clippy
+        run: cargo clippy

@@ -143,16 +143,16 @@ pub fn send_request(args: TokenStream, input: TokenStream) -> TokenStream {
     for field in fields.iter() {
         let name = field.clone().ident.unwrap().to_string();
         if name == "config" {
-            has_config = true
+            has_config = true;
         } else if name == "params" {
-            has_params = true
+            has_params = true;
         } else if name == "id" {
-            has_id = true
+            has_id = true;
         }
     }
 
     if !has_params || !has_config {
-        panic!("Expected a struct with fields named config and params")
+        panic!("Expected a struct with fields named config and params");
     }
 
     let return_type = args.return_type.to_token_stream();
