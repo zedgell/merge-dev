@@ -120,7 +120,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let model: BankInfoModel = BankModelBuilder::default()
+        let model: BankInfoModel = BankInfoModelBuilder::default()
             .id("1234")
             .remote_id("4321")
             .account_number("7890")
@@ -137,12 +137,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn it_build_the_request() {
-        let config = HRISConfig::new("1234", "4321");
+    async fn it_successfully_sends_request() {
+        let config = HRISConfig::new(
+            std::env::var("API_KEY").unwrap(),
+            std::env::var("HRIS_ACCESS_TOKEN").unwrap(),
+        );
 
         let request_params: GetRequestParams = GetRequestParamsBuilder::default()
-            .account_type("checking")
-            .bank_name("test")
             .include_remote_data(true)
             .build()
             .unwrap();
@@ -153,11 +154,14 @@ mod tests {
             .build()
             .unwrap();
 
-        println!("{:#?}", request.send_request().await)
+        let result = request.send_request().await.unwrap();
+        assert_eq!(result.next, None);
+        assert_eq!(result.previous, None);
+        assert_eq!(result.results.is_empty(), true)
     }
 
     #[tokio::test]
-    async fn it_build_the_request_by_id() {
+    async fn it_sends_request_and_gets_404() {
         let config = HRISConfig::new("1234", "4321");
 
         let request_params = GetRequestByIdParamsBuilder::default()
@@ -167,12 +171,20 @@ mod tests {
 
         let request: GetRequestById = GetRequestByIdBuilder::default()
             .config(config.clone())
+            .params(request_params.clone())
             .id("test")
             .build()
             .unwrap();
 
         assert_eq!(request.config, config);
+        assert_eq!(request.params, Some(request_params));
         assert_eq!(request.id, "test".to_string());
-        println!("{:#?}", request.send_request().await)
+        let result = request.send_request().await;
+        if let Err(err) = result {
+            assert_eq!(
+                err.to_string(),
+                "Request was not successfully status: 404 body: ".to_string()
+            )
+        }
     }
 }

@@ -163,11 +163,11 @@ pub fn send_request(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let url_token = if has_id {
         quote! {
-            let url = format!("https://api.merge.dev/api/{}/v1/{}/{}{}", #model, #service, &self.clone().id, url_params);
+            let url = format!("https://api.merge.dev/api/{}/v1/{}/{}{}", #service, #model, &self.clone().id, url_params);
         }
     } else {
         quote! {
-            let url = format!("https://api.merge.dev/api/{}/v1/{}{}", #model, #service, url_params);
+            let url = format!("https://api.merge.dev/api/{}/v1/{}{}", #service, #model, url_params);
         }
     };
 

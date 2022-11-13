@@ -1,0 +1,23 @@
+name: HRIS Unit Test
+
+on:
+  push
+
+env:
+  HRIS_ACCESS_TOKEN: ${{ secrets.HRIS_ACCESS_TOKEN }}
+  API_KEY: ${{ secrets.API_TOKEN }}
+
+jobs:
+  run-unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          override: true
+      - name: cd into hris
+        run: cd merge-hris
+      - name: run test
+        run: cargo test
