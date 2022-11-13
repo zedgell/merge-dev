@@ -17,7 +17,5 @@ jobs:
           toolchain: stable
           components: clippy
           override: true
-      - name: cd into hris
-        run: cd merge-hris
       - name: run test
-        run: cargo test
+        run: cd merge-hris && cargo test

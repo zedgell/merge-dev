@@ -162,7 +162,10 @@ mod tests {
 
     #[tokio::test]
     async fn it_sends_request_and_gets_404() {
-        let config = HRISConfig::new("1234", "4321");
+        let config = HRISConfig::new(
+            std::env::var("API_KEY").unwrap(),
+            std::env::var("HRIS_ACCESS_TOKEN").unwrap(),
+        );
 
         let request_params = GetRequestByIdParamsBuilder::default()
             .include_remote_data(true)
