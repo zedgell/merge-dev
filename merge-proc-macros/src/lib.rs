@@ -175,7 +175,7 @@ pub fn send_request(args: TokenStream, input: TokenStream) -> TokenStream {
         #input
 
         impl #struct_name {
-            async fn send_request(&self) -> Result<#return_type, String> {
+            pub async fn send_request(&self) -> Result<#return_type, String> {
                 #[cfg(test)]
                 use mockito;
 
